@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && incoming().keys().hasAll(['uid', 'createdAt'])
+        && incoming().uid == userId
+        && incoming().createdAt == request.time;
+      allow update: if isOwner(userId)
+        && incoming().uid == userId
+        && incoming().createdAt == existing().createdAt;
+      
+      // Designs Subcollection
+      match /designs/{designId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidId(designId)
+          && incoming().userId == userId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && incoming().canvasData is string
+          && incoming().canvasData.size() < 1000000; // 1MB limit for safety
+        allow update: if isOwner(userId)
+          && incoming().userId == userId
+          && incoming().updatedAt == request.time
+          && incoming().createdAt == existing().createdAt
+          && incoming().canvasData is string;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Admin collection (system set)
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+    }
+  }
+}

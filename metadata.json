@@ -1,0 +1,6 @@
+{
+  "name": "Lumina Creative Suite",
+  "description": "A production-grade, AI-powered design platform with a multi-layer canvas engine, Gemini-integrated creative tools, and professional project management functions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["image_editing", "ai_generation"]
+}
